@@ -34,10 +34,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Negócio já cadastrado" }, { status: 400 });
     }
 
+    // Gera o slug a partir do nome
+    // Ex: "Barbearia do João" → "barbearia-do-joao"
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove acentos
+      .replace(/[^a-z0-9\s-]/g, "")   // remove caracteres especiais
+      .replace(/\s+/g, "-")            // espaços viram hífens
+      .replace(/-+/g, "-");            // remove hífens duplicados
+
     // Cria o negócio no banco ligado ao usuário logado
     const business = await prisma.business.create({
       data: {
         name: name.trim(),
+        slug,
         description: description?.trim() || null,
         ownerId: session.user.id,
       },

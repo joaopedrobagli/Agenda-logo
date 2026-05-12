@@ -19,11 +19,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      // Quando o usuário loga, salva o ID do banco no token
+      // Quando loga pela primeira vez, salva o ID no token
       if (user) {
         token.id = user.id;
       }
-      // Se não tem ID no token, busca no banco pelo email
+      // Se não tem ID ainda, busca no banco pelo email
       if (!token.id && token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email },
@@ -34,7 +34,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       // Adiciona o ID real do banco na sessão
-      if (session.user) {
+      if (session.user && token.id) {
         session.user.id = token.id as string;
       }
       return session;

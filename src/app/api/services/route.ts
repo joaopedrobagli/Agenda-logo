@@ -93,7 +93,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  // Pega o ID do serviço da URL
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
@@ -102,7 +101,6 @@ export async function DELETE(req: Request) {
   }
 
   try {
-    // Deleta o serviço
     await prisma.service.delete({
       where: { id },
     });
@@ -111,6 +109,39 @@ export async function DELETE(req: Request) {
 
   } catch (error) {
     console.error("Erro ao deletar serviço:", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
+}
+
+
+export async function PUT(req: Request) {
+
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const { id, name, price, duration } = await req.json();
+
+  if (!id) {
+    return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
+  }
+
+  try {
+   
+    const service = await prisma.service.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        price: parseFloat(price),
+        duration: parseInt(duration),
+      },
+    });
+
+    return NextResponse.json(service);
+
+  } catch (error) {
+    console.error("Erro ao editar serviço:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

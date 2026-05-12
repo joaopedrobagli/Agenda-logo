@@ -26,7 +26,7 @@ export default function OnboardingPage() {
   // Hook de navegação do Next.js
   const router = useRouter();
 
-  // Função chamada ao clicar em "Próximo"
+
   async function handleSubmit() {
 
     // Validação básica
@@ -57,7 +57,7 @@ export default function OnboardingPage() {
       }
 
       // Redireciona pro dashboard após salvar
-      router.push("/dashboard/servicos");
+      router.push("/dashboard");
 
     } catch {
       setError("Erro de conexão. Tente novamente.");

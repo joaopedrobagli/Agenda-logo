@@ -63,3 +63,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
+
+// Rota PUT — edita o negócio do dono logado
+export async function PUT(req: Request) {
+
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const { name, description } = await req.json();
+
+  if (!name?.trim()) {
+    return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 });
+  }
+
+  try {
+    const business = await prisma.business.update({
+      where: { ownerId: session.user.id },
+      data: {
+        name: name.trim(),
+        description: description?.trim() || null,
+      },
+    });
+
+    return NextResponse.json(business);
+
+  } catch (error) {
+    console.error("Erro ao editar negócio:", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
+}

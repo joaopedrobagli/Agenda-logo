@@ -25,12 +25,37 @@ export default function ServicosClient({ initialServices }: Props) {
   const [services, setServices] = useState<Service[]>(initialServices);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Estado de edição — null = novo serviço, Service = editando
+  const [editingService, setEditingService] = useState<Service | null>(null);
+
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Abre modal de novo serviço
+  function openNewModal() {
+    setEditingService(null);
+    setName("");
+    setPrice("");
+    setDuration("");
+    setError("");
+    setModalOpen(true);
+  }
+
+  // Abre modal de edição preenchido com os dados do serviço
+  function openEditModal(service: Service) {
+    setEditingService(service);
+    setName(service.name);
+    setPrice(service.price.toString());
+    setDuration(service.duration.toString());
+    setError("");
+    setModalOpen(true);
+  }
+
+  // Salva — cria ou edita dependendo do estado
   async function handleSave() {
     if (!name.trim()) { setError("Nome é obrigatório"); return; }
     if (!price) { setError("Preço é obrigatório"); return; }
@@ -40,10 +65,16 @@ export default function ServicosClient({ initialServices }: Props) {
     setError("");
 
     try {
+      // Se tem editingService, é edição (PUT), senão é criação (POST)
+      const method = editingService ? "PUT" : "POST";
+      const body = editingService
+        ? { id: editingService.id, name, price, duration }
+        : { name, price, duration };
+
       const res = await fetch("/api/services", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, price, duration }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -52,9 +83,18 @@ export default function ServicosClient({ initialServices }: Props) {
         return;
       }
 
-      const newService = await res.json();
-      setServices([...services, newService]);
+      const savedService = await res.json();
+
+      if (editingService) {
+        // Atualiza o serviço na lista
+        setServices(services.map((s) => s.id === savedService.id ? savedService : s));
+      } else {
+        // Adiciona o novo serviço na lista
+        setServices([...services, savedService]);
+      }
+
       setModalOpen(false);
+      setEditingService(null);
       setName("");
       setPrice("");
       setDuration("");
@@ -66,12 +106,10 @@ export default function ServicosClient({ initialServices }: Props) {
     }
   }
 
-  // Abre o modal de confirmação de exclusão
   function confirmDelete(id: string) {
     setDeleteId(id);
   }
 
-  // Executa a exclusão após confirmar
   async function handleDelete() {
     if (!deleteId) return;
     await fetch(`/api/services?id=${deleteId}`, { method: "DELETE" });
@@ -88,7 +126,7 @@ export default function ServicosClient({ initialServices }: Props) {
           <p className="text-xs text-gray-400 mt-0.5">Gerencie os serviços que você oferece</p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={openNewModal}
           className="flex items-center gap-2 bg-[#0C447C] text-white text-sm px-4 py-2.5 rounded-lg hover:bg-[#185FA5] transition"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -116,20 +154,30 @@ export default function ServicosClient({ initialServices }: Props) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
                     </svg>
                   </div>
-                  <button
-                    onClick={() => confirmDelete(service.id)}
-                    className="w-7 h-7 rounded-lg border border-gray-100 flex items-center justify-center hover:bg-red-50 transition"
-                  >
-                    <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div className="flex gap-1.5">
+                    {/* Botão de editar */}
+                    <button
+                      onClick={() => openEditModal(service)}
+                      className="w-7 h-7 rounded-lg border border-gray-100 flex items-center justify-center hover:bg-blue-50 transition"
+                    >
+                      <svg className="w-3.5 h-3.5 text-[#185FA5]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    {/* Botão de deletar */}
+                    <button
+                      onClick={() => confirmDelete(service.id)}
+                      className="w-7 h-7 rounded-lg border border-gray-100 flex items-center justify-center hover:bg-red-50 transition"
+                    >
+                      <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Nome do serviço — vem do banco */}
                 <p className="text-sm font-medium text-gray-900 mb-1">{service.name}</p>
 
-                {/* Preço e duração — vem do banco */}
                 <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-50">
                   <span className="text-base font-medium text-[#0C447C]">
                     R$ {service.price.toFixed(2).replace(".", ",")}
@@ -145,9 +193,8 @@ export default function ServicosClient({ initialServices }: Props) {
             );
           })}
 
-          {/* Card de adicionar novo serviço */}
           <div
-            onClick={() => setModalOpen(true)}
+            onClick={openNewModal}
             className="bg-white border border-dashed border-[#B5D4F4] rounded-xl p-5 flex flex-col items-center justify-center min-h-[160px] cursor-pointer hover:bg-blue-50/30 transition"
           >
             <svg className="w-6 h-6 text-[#B5D4F4] mb-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -158,13 +205,16 @@ export default function ServicosClient({ initialServices }: Props) {
         </div>
       )}
 
-      {/* ===== MODAL DE NOVO SERVIÇO ===== */}
+      {/* ===== MODAL DE NOVO / EDITAR SERVIÇO ===== */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[420px] overflow-hidden">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <div>
-                <h2 className="text-sm font-medium text-gray-900">Novo serviço</h2>
+                {/* Título muda dependendo se é novo ou edição */}
+                <h2 className="text-sm font-medium text-gray-900">
+                  {editingService ? "Editar serviço" : "Novo serviço"}
+                </h2>
                 <p className="text-xs text-gray-400 mt-0.5">Preencha as informações do serviço</p>
               </div>
               <button onClick={() => setModalOpen(false)} className="text-gray-300 hover:text-gray-500 transition">
@@ -223,7 +273,7 @@ export default function ServicosClient({ initialServices }: Props) {
                 disabled={loading}
                 className="px-4 py-2 text-sm text-white bg-[#0C447C] rounded-lg hover:bg-[#185FA5] transition disabled:opacity-60"
               >
-                {loading ? "Salvando..." : "Salvar serviço"}
+                {loading ? "Salvando..." : editingService ? "Salvar alterações" : "Salvar serviço"}
               </button>
             </div>
           </div>
